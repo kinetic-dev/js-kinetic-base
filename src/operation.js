@@ -507,6 +507,36 @@ export class Operation {
     return new xdr.Operation(opAttributes);
   }
 
+  /**
+   * Create and fund a contract.
+   * @param {object} opts
+   * @param {string} opts.destination - Destination account ID to create an account for.
+   * @param {string} opts.startingBalance - Amount in XLM the account should be funded for. Must be greater
+   *                                   than the [reserve balance amount](https://www.stellar.org/developers/learn/concepts/fees.html).
+   * @param {string} opts.scriptHash - SHA256 hash of the script for the contract.
+   * @param {string} [opts.source] - The source account for the payment. Defaults to the transaction's source account.
+   * @returns {xdr.CreateAccountOp}
+   */
+  static createContract(opts) {
+    if (!StrKey.isValidEd25519PublicKey(opts.destination)) {
+      throw new Error("destination is invalid");
+    }
+    if (!this.isValidAmount(opts.startingBalance)) {
+      throw new TypeError(Operation.constructAmountRequirementsError('startingBalance'));
+    }
+    let attributes = {};
+    attributes.destination     = Keypair.fromPublicKey(opts.destination).xdrAccountId();
+    attributes.startingBalance = this._toXDRAmount(opts.startingBalance);
+    attributes.scriptHash      = opts.scriptHash;
+    let createContract         = new xdr.CreateContractOp(attributes);
+
+    let opAttributes = {};
+    opAttributes.body = xdr.OperationBody.createContract(createContract);
+    this.setSourceAccount(opAttributes, opts);
+
+    return new xdr.Operation(opAttributes);
+  }
+
   static setSourceAccount(opAttributes, opts) {
     if (opts.source) {
       if (!StrKey.isValidEd25519PublicKey(opts.source)) {

@@ -25,7 +25,12 @@ enum OperationType
     ALLOW_TRUST = 7,
     ACCOUNT_MERGE = 8,
     INFLATION = 9,
-    MANAGE_DATA = 10
+    MANAGE_DATA = 10,
+    CREATE_CONTRACT = 100,
+    LOCK_CONTRACT = 101,
+    EXECUTE_CONTRACT = 102,
+    DESTROY_CONTRACT = 103,
+    MANAGE_STAKE = 104
 };
 
 /* CreateAccount
@@ -221,6 +226,22 @@ struct ManageDataOp
     DataValue* dataValue;   // set to null to clear
 };
 
+/* CreateContract
+Creates and funds a new contract with the specified starting balance.
+
+Threshold: med
+
+Result: CreateContractResult
+
+*/
+
+struct CreateContractOp
+{
+    AccountID destination; // contract to create
+    int64 startingBalance; // intial amount contract ends up with
+    string64 scriptHash;
+};
+
 /* An operation is the lowest unit of work that a transaction does */
 struct Operation
 {
@@ -253,6 +274,8 @@ struct Operation
         void;
     case MANAGE_DATA:
         ManageDataOp manageDataOp;
+    case CREATE_CONTRACT:
+        CreateContractOp createContractOp;
     }
     body;
 };
@@ -338,7 +361,7 @@ struct TransactionEnvelope
     /* Each decorated signature is a signature over the SHA256 hash of
      * a TransactionSignaturePayload */
     DecoratedSignature
-    signatures<20>;
+    signatures<100>;
 };
 
 /* Operation Results section */
@@ -646,6 +669,29 @@ default:
     void;
 };
 
+/******* CreateContract Result ********/
+
+enum CreateContractResultCode
+{
+    // codes considered as "success" for the operation
+    CREATE_CONTRACT_SUCCESS = 0, // account was created
+
+    // codes considered as "failure" for the operation
+    CREATE_CONTRACT_MALFORMED = -1,   // invalid destination
+    CREATE_CONTRACT_UNDERFUNDED = -2, // not enough funds in source account
+    CREATE_CONTRACT_LOW_RESERVE =
+        -3, // would create an account below the min reserve
+    CREATE_CONTRACT_ALREADY_EXIST = -4 // account already exists
+};
+
+union CreateContractResult switch (CreateContractResultCode code)
+{
+case CREATE_CONTRACT_SUCCESS:
+    void;
+default:
+    void;
+};
+
 /* High level Operation Result */
 
 enum OperationResultCode
@@ -683,6 +729,8 @@ case opINNER:
         InflationResult inflationResult;
     case MANAGE_DATA:
         ManageDataResult manageDataResult;
+    case CREATE_CONTRACT:
+        CreateContractResult createContractResult;
     }
     tr;
 default:

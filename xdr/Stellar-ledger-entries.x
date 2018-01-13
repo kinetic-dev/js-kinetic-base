@@ -11,6 +11,7 @@ typedef PublicKey AccountID;
 typedef opaque Thresholds[4];
 typedef string string32<32>;
 typedef string string64<64>;
+typedef string string256<256>;
 typedef uint64 SequenceNumber;
 typedef opaque DataValue<64>; 
 
@@ -74,6 +75,12 @@ struct Signer
     uint32 weight; // really only need 1byte
 };
 
+struct SignerPool
+{
+    Signer signers<100>;
+    uint32 weight; // really only need 1byte
+};
+
 enum AccountFlags
 { // masks for each flag
 
@@ -87,6 +94,9 @@ enum AccountFlags
     // Once set, causes all AUTH_* flags to be read-only
     AUTH_IMMUTABLE_FLAG = 0x4
 };
+
+// mask for all valid flags
+const MASK_ACCOUNT_FLAGS = 0x7;
 
 /* AccountEntry
 
@@ -113,7 +123,15 @@ struct AccountEntry
     // thresholds stores unsigned bytes: [weight of master|low|medium|high]
     Thresholds thresholds;
 
-    Signer signers<20>; // possible signers for this account
+    Signer signers<20>;
+
+    // fields used if running an execution node
+    string32* execIPAddr;
+    int64 balanceStaked;
+
+    // fields used if account represents a contract
+    string64* scriptHash;
+    string64* storageHash;
 
     // reserved for future use
     union switch (int v)
@@ -135,6 +153,10 @@ enum TrustLineFlags
     // issuer has authorized account to perform transactions with its credit
     AUTHORIZED_FLAG = 1
 };
+
+
+// mask for all trustline flags
+const MASK_TRUSTLINE_FLAGS = 1;
 
 struct TrustLineEntry
 {
@@ -160,6 +182,9 @@ enum OfferEntryFlags
     // issuer has authorized account to perform transactions with its credit
     PASSIVE_FLAG = 1
 };
+
+// Mask for OfferEntry flags
+const MASK_OFFERENTRY_FLAGS = 1;
 
 /* OfferEntry
     An offer is the building block of the offer book, they are automatically
